@@ -6,6 +6,7 @@ Run with:  pythonw ticker.pyw
 import ctypes
 import json
 import os
+import sys
 import threading
 import time
 import tkinter as tk
@@ -17,6 +18,8 @@ HEADERS = {"User-Agent": "Mozilla/5.0"}
 BTC_EVERY = 2      # seconds
 STOCK_EVERY = 5    # seconds
 CONFIG = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "desktop-ticker.json")
+APP_NAME = "DesktopTicker"
+RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 BG, FG, DIM = "#16181d", "#e8e8e8", "#7d828c"
 UP, DOWN = "#2ecc71", "#ff5c5c"
@@ -47,6 +50,45 @@ def spy_is_open(meta):
     return reg.get("start", 0) <= time.time() < reg.get("end", 0)
 
 
+def startup_command():
+    if getattr(sys, "frozen", False):  # running as the packaged .exe
+        return f'"{sys.executable}"'
+    pythonw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
+    return f'"{pythonw}" "{os.path.abspath(__file__)}"'
+
+
+def startup_enabled():
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as k:
+            winreg.QueryValueEx(k, APP_NAME)
+        return True
+    except OSError:
+        return False
+
+
+def set_startup(on):
+    """Add or remove this app from the current user's Windows startup list."""
+    import winreg
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as k:
+        if on:
+            winreg.SetValueEx(k, APP_NAME, 0, winreg.REG_SZ, startup_command())
+        else:
+            try:
+                winreg.DeleteValue(k, APP_NAME)
+            except FileNotFoundError:
+                pass
+
+
+def already_running():
+    """True if another copy of the widget is open (so double-clicking twice is harmless)."""
+    try:
+        ctypes.windll.kernel32.CreateMutexW(None, False, "Local\\DesktopTickerWidget")
+        return ctypes.windll.kernel32.GetLastError() == 183  # ERROR_ALREADY_EXISTS
+    except Exception:
+        return False
+
+
 def work_area():
     """Desktop area excluding the taskbar (left, top, right, bottom)."""
     try:
@@ -67,6 +109,7 @@ class Ticker:
         self.cfg = self.load_cfg()
         self.topmost = tk.BooleanVar(value=self.cfg.get("topmost", True))
         root.attributes("-topmost", self.topmost.get())
+        self.startup = tk.BooleanVar(value=startup_enabled())
 
         frame = tk.Frame(root, bg=BG, padx=12, pady=8)
         frame.pack()
@@ -84,6 +127,7 @@ class Ticker:
 
         menu = tk.Menu(root, tearoff=0)
         menu.add_checkbutton(label="Always on top", variable=self.topmost, command=self.toggle_top)
+        menu.add_checkbutton(label="Start with Windows", variable=self.startup, command=self.toggle_startup)
         menu.add_command(label="Reset position", command=self.reset_position)
         menu.add_separator()
         menu.add_command(label="Exit", command=self.quit)
@@ -151,6 +195,12 @@ class Ticker:
         self.root.attributes("-topmost", self.topmost.get())
         self.save_cfg()
 
+    def toggle_startup(self):
+        try:
+            set_startup(self.startup.get())
+        except Exception:
+            self.startup.set(startup_enabled())
+
     def load_cfg(self):
         try:
             with open(CONFIG) as f:
@@ -173,6 +223,8 @@ class Ticker:
 
 
 if __name__ == "__main__":
+    if already_running():
+        sys.exit(0)
     try:
         ctypes.windll.shcore.SetProcessDpiAwareness(1)  # crisp text on high-DPI screens
     except Exception:

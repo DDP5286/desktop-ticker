@@ -5,60 +5,66 @@ A tiny always-on-top Windows widget that shows the live **Bitcoin** price and th
 
 ![Desktop Ticker screenshot](docs/screenshot.png)
 
-- BTC updates every 2 seconds (shows 24h change)
-- SPY / ES update every 5 seconds (shows change from previous close)
-- Switches between SPY and ES automatically using the exchange's own session times, so holidays and early closes are handled
-- Drag it anywhere on your desktop; it remembers where you left it
-- No API keys, no extra packages, one file
+## Install (Windows 10 / 11)
 
-## Requirements
+1. **[Click here to download DesktopTicker.exe](https://github.com/DDP5286/desktop-ticker/releases/latest/download/DesktopTicker.exe)**
+2. Open your **Downloads** folder and double-click **DesktopTicker.exe**.
+3. If a blue **"Windows protected your PC"** box appears, click **More info**, then **Run anyway**.
+   (This shows for any new app that isn't from a big company. It only happens the first time.)
 
-- Windows 10 or 11
-- [Python 3](https://www.python.org/downloads/) (3.9 or newer). The default installer includes everything needed (tkinter).
+The widget appears in the bottom-right corner of your screen, just above the taskbar. That's it.
 
-## Run it
-
-1. Download this repo (green **Code** button → **Download ZIP**, then unzip), or clone it:
-   ```
-   git clone https://github.com/DDP5286/desktop-ticker.git
-   ```
-2. Double-click `ticker.pyw`, or run:
-   ```
-   pythonw ticker.pyw
-   ```
-
-The widget appears in the bottom-right corner, just above the taskbar.
+**Tip:** move `DesktopTicker.exe` somewhere permanent (for example your **Documents** folder) *before* you turn on
+*Start with Windows*, so it doesn't get lost when you clean out Downloads.
 
 ## Using it
 
-- **Move:** drag with the left mouse button
-- **Options:** right-click for *Always on top*, *Reset position* and *Exit*
+- **Move it:** click and drag it anywhere. It remembers where you leave it.
+- **Right-click it** for options:
+  - **Always on top**: keep it above other windows
+  - **Start with Windows**: open it automatically every time you turn on your PC
+  - **Reset position**: put it back in the bottom-right corner
+  - **Exit**: close it
 
-Your position and settings are saved in `%APPDATA%\desktop-ticker.json`.
+## Uninstall
 
-## Start it with Windows
+1. Right-click the widget, untick **Start with Windows**, then click **Exit**.
+2. Delete `DesktopTicker.exe`.
 
-Run this in PowerShell from the folder that contains `ticker.pyw`:
+## What it shows
 
-```powershell
-$lnk = Join-Path ([Environment]::GetFolderPath('Startup')) 'Desktop Ticker.lnk'
-$s = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
-$s.TargetPath = (Get-Command pythonw).Source
-$s.Arguments = '"' + (Resolve-Path .\ticker.pyw) + '"'
-$s.WorkingDirectory = (Get-Location).Path
-$s.Save()
-```
-
-Keep the folder where it is afterwards, because the shortcut points to it.
-To stop it starting with Windows, turn off **Desktop Ticker** in Task Manager → *Startup apps*, or delete the shortcut
-(press `Win + R`, type `shell:startup`, and delete `Desktop Ticker.lnk`).
+- **BTC:** live price, updated every 2 seconds, with the change over the last 24 hours
+- **SPY** (market hours) or **ES** (S&P 500 futures, all other times): updated every 5 seconds, with the change from
+  the previous close. It switches automatically and knows about market holidays and early closes.
 
 ## Data sources
 
 - **BTC:** [Coinbase Exchange public API](https://docs.cdp.coinbase.com/exchange/)
-- **SPY and ES futures:** Yahoo Finance's public chart endpoint. It's unofficial and undocumented, so it may change or stop working without notice.
+- **SPY and ES futures:** Yahoo Finance's public chart endpoint. It's unofficial and undocumented, so it may change or
+  stop working without notice.
 
 Prices are for personal, informational use only. They may be delayed or wrong, so don't trade on them.
+
+## For developers
+
+The whole app is one Python file, `ticker.pyw`, using only the standard library (Python 3.9+ with tkinter).
+
+Run from source:
+
+```
+git clone https://github.com/DDP5286/desktop-ticker.git
+cd desktop-ticker
+pythonw ticker.pyw
+```
+
+Build the `.exe`:
+
+```
+python -m pip install pyinstaller
+python -m PyInstaller --onefile --windowed --name DesktopTicker --icon assets/icon.ico ticker.pyw
+```
+
+The result is in `dist/DesktopTicker.exe`. Settings are saved in `%APPDATA%\desktop-ticker.json`.
 
 ## License
 
